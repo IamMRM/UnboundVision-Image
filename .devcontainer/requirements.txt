@@ -1,0 +1,9 @@
+transformers
+safetensors
+fastapi
+uvicorn
+flake8
+gradio
+#llama-cpp-python
+#bitsandbytes
+#accelerate
