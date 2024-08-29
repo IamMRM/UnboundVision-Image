@@ -1,9 +1,11 @@
+torch
 transformers
 safetensors
+diffusers
 fastapi
 uvicorn
 flake8
 gradio
 #llama-cpp-python
 #bitsandbytes
-#accelerate
+accelerate
