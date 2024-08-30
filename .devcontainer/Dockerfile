@@ -1,10 +1,14 @@
 # .devcontainer/Dockerfile
-FROM determinedai/environments:cuda-11.8-pytorch-2.0-gpu-mpi-0.31.1
+#FROM pytorch/pytorch:2.2.0-cuda12.1-cudnn8-devel
+#FROM pytorchignite/apex:2.4.0-0.5.1
+FROM pytorchignite/apex
 
 # Install sudo
 USER root
 RUN apt-get update && \
     apt-get install -y sudo git
+
+WORKDIR /workspace
 
 # Optional: Create a non-root user with sudo privileges
 RUN useradd -ms /bin/bash devuser && \
@@ -12,19 +16,15 @@ RUN useradd -ms /bin/bash devuser && \
     adduser devuser sudo && \
     adduser devuser video
 
+# Install NVIDIA Apex
+#RUN git clone https://github.com/NVIDIA/apex && \
+#    cd apex && \
+#    pip install -v --disable-pip-version-check --no-build-isolation --no-cache-dir ./
+
 # Switch to the non-root user
 USER devuser
 
-WORKDIR /workspace
 
 # Copy the requirements.txt and install Python packages
 COPY requirements.txt /workspace/
-RUN pip install --upgrade pip && pip install -r requirements.txt
-
-# Install NVIDIA Apex
-RUN git clone https://github.com/NVIDIA/apex && \
-    cd apex && \
-    pip install -v --disable-pip-version-check --no-build-isolation --no-cache-dir ./
-
-# Optional: Clean up to reduce image size
-RUN rm -rf /workspace/apex
+RUN pip install -r requirements.txt

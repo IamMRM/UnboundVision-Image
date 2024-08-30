@@ -1,4 +1,3 @@
-torch
 transformers
 safetensors
 diffusers
@@ -7,5 +6,7 @@ uvicorn
 flake8
 gradio
 #llama-cpp-python
-#bitsandbytes
+bitsandbytes
 accelerate
+sentencepiece
+protobuf
