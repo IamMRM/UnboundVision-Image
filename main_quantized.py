@@ -3,15 +3,24 @@ from diffusers import FluxPipeline
 from safetensors.torch import load_file
 from huggingface_hub import hf_hub_download
 from collections import OrderedDict
-#repo_id = "Kijai/flux-fp8"
-#filename_fp8 = "flux1-dev-fp8.safetensors"
-#filename_schnell_fp8 = "flux1-schnell-fp8.safetensors"
-#fp8_path = hf_hub_download(repo_id=repo_id, filename=filename_fp8)
-#schnell_fp8_path = hf_hub_download(repo_id=repo_id, filename=filename_schnell_fp8)
+import os
 
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
+os.environ["TORCH_USE_CUDA_DSA"] = "1"
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
+
+def load_model(model_dir):
+
+    pipe = FluxPipeline.from_pretrained(model_dir, torch_dtype=torch.bfloat16, use_safetensors=True)#, device_map="balanced")
+    # #pipe.save_pretrained("models/FLUX.1-dev")
+    # print("Base model loaded successfully with safetensors")
+    pipe.vae.enable_slicing()
+    pipe.vae.enable_tiling()
+    print("moved models to gpus")
+    return pipe
 
 def load_quantized_model(model_dir, quantized_model_path):
-    pipe = FluxPipeline.from_pretrained(model_dir, torch_dtype=torch.bfloat16, use_safetensors=True)
+    pipe = FluxPipeline.from_pretrained(model_dir, torch_dtype=torch.bfloat16, use_safetensors=True, device_map="balanced")
     print("Base model loaded successfully with safetensors")
 
     quantized_state_dict = load_file(quantized_model_path)
@@ -23,20 +32,21 @@ def load_quantized_model(model_dir, quantized_model_path):
     # Apply quantized weights
     pipe.lora_state_dict(new_state_dict, strict=False)
     print("Quantized weights applied successfully")
-    pipe.enable_sequential_cpu_offload()
+    #pipe.enable_sequential_cpu_offload()
     pipe.vae.enable_slicing()
     pipe.vae.enable_tiling()
     return pipe
 
-def generate_image(pipe, prompt, height, width):
+def generate_image(pipe, prompt, height=512, width=512):
     try:
         with torch.no_grad():
+            torch.cuda.synchronize()
             image = pipe(
                 prompt,
                 height=height,
                 width=width,
                 guidance_scale=7.5,
-                num_inference_steps=30,
+                num_inference_steps=100,  # Reduced steps
                 max_sequence_length=256
             ).images[0]
         return image
@@ -47,15 +57,15 @@ def generate_image(pipe, prompt, height, width):
 # Main execution
 if __name__ == "__main__":
     quantized_model_path = "flux1-schnell-fp8.safetensors"
-    model_dir = "models/FLUX.1-schnell"
+    model_dir = "models/FLUX.1-dev"
+    #pipe = load_quantized_model(model_dir, quantized_model_path)
 
-    pipe = load_quantized_model(model_dir, quantized_model_path)
-
-    prompt = "dancing black and white four men and women with ethnic masks, dressed very professionally. These should be looking straight from the photo."
-    image = generate_image(pipe, prompt, height=3840, width=2160)
-
+    pipe = load_model(model_dir)
+    print(pipe.hf_device_map)
+    prompt = "dancing people in a festival"
+    image = generate_image(pipe, prompt)
     if image:
         image.save("image.png")
         print("Image generated and saved successfully")
     else:
-        print("Failed to generate image")
+        print("Failed to save generated image")
